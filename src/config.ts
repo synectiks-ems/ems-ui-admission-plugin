@@ -1,9 +1,9 @@
-const graphqlUrl = 'http://100.81.5.25:9094';
-const loggedInUserUrl = 'http://100.81.5.25:3000';
-const ssmWorkflowUrl = 'http://100.81.5.25:8095';
-const jsrOakUrl = 'http://100.81.5.25:8093';
-const preferenceUrl = 'http://100.81.5.25:9091';
-const backEndUrl = 'http://100.81.5.25:8080';
+const graphqlUrl = 'http://100.81.5.26:9094';
+const loggedInUserUrl = 'http://100.81.5.26:3000';
+const ssmWorkflowUrl = 'http://100.81.5.26:8095';
+const jsrOakUrl = 'http://100.81.5.26:8093';
+const preferenceUrl = 'http://100.81.5.26:9091';
+const backEndUrl = 'http://100.81.5.26:8080';
 
 const ADMISSION_ENQUIRY_SSM =
   '{ "states" : [' +

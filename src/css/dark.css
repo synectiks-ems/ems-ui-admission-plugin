@@ -852,3 +852,13 @@ table.adminListPage td:first-child {
 .p--512 {
   padding: 5px 12px;
 }
+
+.all-alert-data-table {
+  display: grid;
+  width: 100%;
+}
+.all-alert-data-table .alerts-data-tabel {
+  overflow-x: scroll;
+  background-color: #ffffff;
+  margin-top: 20px;
+}

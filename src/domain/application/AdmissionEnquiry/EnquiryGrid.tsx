@@ -21,6 +21,8 @@ import { commonFunctions } from '../_utilites/common.functions';
 import { UserAgentApplication } from 'msal';
 import { azureConfig } from '../../../azureConfig';
 import '../../../css/custom.css';
+import Table from '../../../components/table';
+
 
 export interface AdmissionEnquiryProps extends React.HTMLAttributes<HTMLElement> {
     [data: string]: any;
@@ -109,6 +111,72 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                     storeAuthStateInCookie: true,
                 }
             }),
+            admissionEnquiry:{},
+            enquiryList: [],
+            columns: [
+                {
+                  label: "Enquiry Id",
+                  key: 'id',
+                  isCaseInsensitive: true,
+                },
+                {
+                  label: "Student Name",
+                  key: 'studentName',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Cell Phone No",
+                  key: 'cellPhoneNo',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Land Line Phone No",
+                  key: 'landLinePhoneNo',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Email Id",
+                  key: 'emailId',
+                  isCaseInsensitive: false,
+                },
+                {
+                    label: "Status",
+                    key: 'enquiryStatus',
+                    isCaseInsensitive: false,
+                },
+                {
+                    label: "Enquiry Date",
+                    key: 'strCreatedOn',
+                    isCaseInsensitive: false,
+                 },
+                 
+                 {
+                    label: 'Action',
+                    key: 'action',
+                    renderCallback: (value: any, alert: any) => {
+                        const { source,admissionEnquiry } = this.state;
+                     const retVal = [];
+                      return  <td>
+                        <div className="d-inline-block">
+                       
+                        {
+                            admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
+                               
+                                <button className="btn btn-primary" onClick={e => this.showDetail(e, true, alert)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
+                               
+                            )
+                        }
+                        
+                        </div>
+                        </td>
+                    
+                  
+                    },
+                    isCaseInsensitive: true
+                  }
+                
+                  
+              ],
             accessToken: null,
             msCloudParentId: azureConfig.MS_CLOUD_PARENT_ID,
             tokenType: null,
@@ -121,7 +189,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
             isAcademicInfoDone: false,
             isDocumentsDone: false,
         };
-        this.createRows = this.createRows.bind(this);
+        // this.createRows = this.createRows.bind(this);
         this.updateEnquiryList = this.updateEnquiryList.bind(this);
         this.nextPageEvent = this.nextPageEvent.bind(this);
         this.prevPageEvent = this.prevPageEvent.bind(this);
@@ -150,6 +218,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
     }
 
     async componentDidMount() {
+        console.log("enq grid.......")
         await this.registerSocket();
         if (this.state.source === 'ADMISSION_PAGE') {
             await this.getSsmStates();
@@ -688,9 +757,24 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         
     }
 
+   
     async showDetail(e: any, bShow: boolean, enquiryObj: any) {
+     const {source,enquiryList} = this.state;
+     console.log("Enquery Obj :   ",enquiryObj);
+        //   console.log("I am in ");
+        // console.log("Tr Obje ::  ",enquiryObj);
+     
+        // let i;
+        // for(i in enquiryList){
+        //   if(enquiryObj.id==enquiryList[i].id){
+        //     this.setState({
+        //         enquiryObj:enquiryList[i],
+        //     })
+        //   }
+        // }
+  
         e && e.preventDefault();
-        const {source} = this.state;
+       
         this.setState({
             isDetailOpen: bShow
         });
@@ -712,6 +796,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                 await this.setDropDown(this.state.stateList, "state", "id", "stateName");
                 await this.initFromDb(enquiryObj);
                 await this.initData(enquiryObj);
+              
             }
             this.setState({
                 isLoading: false
@@ -721,6 +806,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                 isLoading: false
             });
         }
+       
         this.setState({
             enqObjForEdit: enquiryObj, 
             enquiryObj: enquiryObj,
@@ -729,37 +815,37 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         });
     }
 
-    createRows(objAry: any) {
-        const { source } = this.state;
-        console.log("createRows() - Enquiry list on Grid page: ", objAry);
-        if (objAry === undefined || objAry === null) {
-            return;
-        }
-        const mutateResLength = objAry.length;
-        const retVal = [];
-        for (let i = 0; i < mutateResLength; i++) {
-            const admissionEnquiry = objAry[i];
-            retVal.push(
-                <tr >
-                    <td>{admissionEnquiry.id}</td>
-                    <td>{admissionEnquiry.studentName}&nbsp;{admissionEnquiry.studentMiddleName}&nbsp;{admissionEnquiry.studentLastName} </td>
-                    <td>{admissionEnquiry.cellPhoneNo}</td>
-                    <td>{admissionEnquiry.landLinePhoneNo}</td>
-                    <td>{admissionEnquiry.emailId}</td>
-                    <td>{admissionEnquiry.enquiryStatus}</td>
-                    <td>{admissionEnquiry.strCreatedOn}</td>
-                    <td>
-                        {
-                            admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
-                                <button className="btn btn-primary" onClick={e => this.showDetail(e, true, admissionEnquiry)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
-                            )
-                        }
-                    </td>
-                </tr>
-            );
-        }
-        return retVal;
-    }
+    // createRows(objAry: any) {
+    //     const { source } = this.state;
+    //     console.log("createRows() - Enquiry list on Grid page: ", objAry);
+    //     if (objAry === undefined || objAry === null) {
+    //         return;
+    //     }
+    //     const mutateResLength = objAry.length;
+    //     const retVal = [];
+    //     for (let i = 0; i < mutateResLength; i++) {
+    //         const admissionEnquiry = objAry[i];
+    //         retVal.push(
+    //             <tr >
+    //                 <td>{admissionEnquiry.id}</td>
+    //                 <td>{admissionEnquiry.studentName}&nbsp;{admissionEnquiry.studentMiddleName}&nbsp;{admissionEnquiry.studentLastName} </td>
+    //                 <td>{admissionEnquiry.cellPhoneNo}</td>
+    //                 <td>{admissionEnquiry.landLinePhoneNo}</td>
+    //                 <td>{admissionEnquiry.emailId}</td>
+    //                 <td>{admissionEnquiry.enquiryStatus}</td>
+    //                 <td>{admissionEnquiry.strCreatedOn}</td>
+    //                 <td>
+    //                     {
+    //                         admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
+    //                             <button className="btn btn-primary" onClick={e => this.showDetail(e, true, admissionEnquiry)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
+    //                         )
+    //                     }
+    //                 </td>
+    //             </tr>
+    //         );
+    //     }
+    //     return retVal;
+    // }
 
     async updateEnquiryList(updatedEnquiryList: any) {
         this.setState({
@@ -1000,7 +1086,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                             }
                         </div>
                         <div style={{ width: '100%', height: '250px', overflow: 'auto' }}>
-                            <table id="admissionEnquiryTable" className="striped-table fwidth bg-white p-2">
+                            {/* <table id="admissionEnquiryTable" className="striped-table fwidth bg-white p-2">
                                 <thead>
                                     <tr>
                                         <th>Enquiry Id</th>
@@ -1016,9 +1102,11 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                                 <tbody>
                                     {this.createRows(list)}
                                 </tbody>
-                            </table>
-                        </div>
+                            </table> */}
+                             <Table valueFromData={{ columns: this.state.columns, data: list }} perPageLimit={6} visiblecheckboxStatus={true} tableClasses={{ table: "alert-data-tabel", tableParent: "alerts-data-tabel", parentClass: "main-parent-table" }}  showingLine="Showing %start% to %end% of %total%" />
+         </div>
                     </React.Fragment>
+                    
                 }
             </main>
         );

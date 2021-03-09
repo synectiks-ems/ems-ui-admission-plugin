@@ -21,6 +21,9 @@ import { commonFunctions } from '../_utilites/common.functions';
 import { UserAgentApplication } from 'msal';
 import { azureConfig } from '../../../azureConfig';
 import '../../../css/custom.css';
+import Table from '../../../components/table';
+import AdmissionWorkFlow from './AdmissionWorkFlow';
+
 
 export interface AdmissionEnquiryProps extends React.HTMLAttributes<HTMLElement> {
     [data: string]: any;
@@ -33,7 +36,8 @@ export interface AdmissionEnquiryProps extends React.HTMLAttributes<HTMLElement>
 }
 
 class EnquiryGrid<T = { [data: string]: any }> extends React.Component<AdmissionEnquiryProps, any> {
-    surveyModel: any = null;
+    admissionModel: any = null ;
+    admissionWorkflowRef: any;
     SSM_SORT_ORDER: any = {
         "EnquiryReceived": 0,
         "PersonalInfo": 1,
@@ -109,6 +113,69 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                     storeAuthStateInCookie: true,
                 }
             }),
+            admissionEnquiry:{},
+            enquiryList: [],
+            columns: [
+                {
+                  label: "Enquiry Id",
+                  key: 'id',
+                  isCaseInsensitive: true,
+                },
+                {
+                  label: "Student Name",
+                  key: 'studentName',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Cell Phone No",
+                  key: 'cellPhoneNo',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Land Line Phone No",
+                  key: 'landLinePhoneNo',
+                  isCaseInsensitive: false,
+                },
+                {
+                  label: "Email Id",
+                  key: 'emailId',
+                  isCaseInsensitive: false,
+                },
+                {
+                    label: "Status",
+                    key: 'enquiryStatus',
+                    isCaseInsensitive: false,
+                },
+                {
+                    label: "Enquiry Date",
+                    key: 'strCreatedOn',
+                    isCaseInsensitive: false,
+                 },
+                 
+                 {
+                    label: 'Action',
+                    key: 'action',
+                    renderCallback: (value: any, alert: any) => {
+                        const { source,admissionEnquiry } = this.state;
+                   
+                      return <td>
+                        <div className="d-inline-block">
+                       
+                        {
+                            admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
+                                <button className="btn btn-primary" onClick={e => this.showDetail(e, true, admissionEnquiry)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
+                            )
+                        }
+                        
+                        </div>
+                        </td>
+                     
+                    },
+                    isCaseInsensitive: true
+                  }
+                
+                  
+              ],
             accessToken: null,
             msCloudParentId: azureConfig.MS_CLOUD_PARENT_ID,
             tokenType: null,
@@ -121,7 +188,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
             isAcademicInfoDone: false,
             isDocumentsDone: false,
         };
-        this.createRows = this.createRows.bind(this);
+        // this.createRows = this.createRows.bind(this);
         this.updateEnquiryList = this.updateEnquiryList.bind(this);
         this.nextPageEvent = this.nextPageEvent.bind(this);
         this.prevPageEvent = this.prevPageEvent.bind(this);
@@ -147,15 +214,17 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         this.saveTempObjectInDb = this.saveTempObjectInDb.bind(this);
         this.initFromDb = this.initFromDb.bind(this);
         this.onClickSsmState = this.onClickSsmState.bind(this);
+        this.admissionWorkflowRef = React.createRef();
     }
 
     async componentDidMount() {
+        console.log("enq grid.......")
         await this.registerSocket();
         if (this.state.source === 'ADMISSION_PAGE') {
             await this.getSsmStates();
             await this.removeDuplicateAndSort();
-            this.surveyModel = new Survey.ReactSurveyModel(SurveyJson.ADMISSION_STATE_FORM);
-            this.setState({ survey: SurveyJson.ADMISSION_STATE_FORM });
+            // this.surveyModel = new Survey.ReactSurveyModel(SurveyJson.ADMISSION_STATE_FORM);
+            // this.setState({ survey: SurveyJson.ADMISSION_STATE_FORM });
             // await this.loginToMsAccount(); 
         }
     }
@@ -282,7 +351,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         const { academicYearId, branchId, departmentId } = this.state;
         let exitCode = 0;
         const machineId = Utils.getSSMachineId(config.SSM_ID, this.state.enquiryObj.id);
-        const tempInput = Utils.getInputForTempObject(this.surveyModel, branchId, academicYearId, departmentId, machineId);
+        const tempInput = Utils.getInputForTempObject(this.admissionModel, branchId, academicYearId, departmentId, machineId);
         await this.props.client.mutate({
             mutation: SAVE_TEMP_STUDENT,
             variables: {
@@ -305,13 +374,13 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
      */
     async prevPageEvent() {
 
-        console.log("1. prevPageEvent : Page name --------- ", this.surveyModel.currentPageValue);
+        console.log("1. prevPageEvent : Page name --------- ", this.admissionModel.currentPageValue);
 
-        if (this.surveyModel.currentPageValue) {
+        if (this.admissionModel.currentPageValue) {
 
-            let eventType = this.surveyModel.currentPageValue.name;
-            if (this.state.currentPageNo !== null && this.surveyModel.currentPageValue.visibleIndex < this.state.currentPageNo) {
-                eventType = "BackTo" + this.surveyModel.currentPageValue.name;
+            let eventType = this.admissionModel.currentPageValue.name;
+            if (this.state.currentPageNo !== null && this.admissionModel.currentPageValue.visibleIndex < this.state.currentPageNo) {
+                eventType = "BackTo" + this.admissionModel.currentPageValue.name;
             }
             console.log("2. prevPageEvent : event type --------- ", eventType);
             await Utils.sendSsmEvent(eventType, this.state.enquiryObj.id)
@@ -319,10 +388,10 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
             // .then((curSt: any) => {
             //     console.log('Current State set from Previous Event : ', curSt);
             // });
-            await this.updateSliderStates(this.surveyModel.currentPageValue.name);
+            await this.updateSliderStates(this.admissionModel.currentPageValue.name);
             await this.saveTempObjectInDb();
             this.setState({
-                currentPageNo: this.surveyModel.currentPageValue.visibleIndex,
+                currentPageNo: this.admissionModel.currentPageValue.visibleIndex,
             });
             
         }
@@ -384,7 +453,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
 
     async saveStudent() {
         const { branchId, departmentId, academicYearId, admissionNo } = this.state;
-        const data = Utils.getInput(this.surveyModel, branchId, departmentId, null, admissionNo, academicYearId);
+        const data = Utils.getInput(this.admissionModel, branchId, departmentId, null, admissionNo, academicYearId);
         console.log("1 EnquiryGrid. saveStudent.  input  : ", data);
         if (data.strDateOfBirth === "Invalid date") {
             data.strDateOfBirth = null;
@@ -420,7 +489,8 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
             fetchPolicy: 'no-cache'
         }).then((resp: any) => {
             console.log("Success in saveAdmissionApplication Mutation. Exit code : ", resp.data.saveAdmissionApplication.cmsAdmissionApplicationVo.exitCode);
-            exitCode = resp.data.saveAdmissionApplication.cmsAdmissionApplicationVo.exitCode;
+            // exitCode = resp.data.saveAdmissionApplication.cmsAdmissionApplicationVo.exitCode;
+            this.admissionWorkflowRef.current.onSuccessfulCall();
             if (exitCode === 0) {
                 this.setState({
                     list: resp.data.saveAdmissionApplication.cmsAdmissionApplicationVo.enquiryList,
@@ -429,7 +499,9 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
             }
         }).catch((error: any) => {
             exitCode = 1;
+            this.admissionWorkflowRef.current.onSuccessfulCall();
             console.log('Error in saveAdmissionApplication Mutation : ', error);
+            this.admissionWorkflowRef.current.onSuccessfulCall();
         });
 
     }
@@ -535,19 +607,19 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         });
     }
 
-    async showSelectedPage(curSt: any) {
-        await console.log("1. showSelectedPage :::: ");
-        for (var i = 0; i < this.surveyModel.visiblePages.length; i++) {
-            let pm = this.surveyModel.visiblePages[i];
-            console.log("2. showSelectedPage. Current Page :: ", pm);
-            if (pm.name === curSt) {
-                this.surveyModel.currentPageNo = pm.visibleIndex;
-                console.log("3. showSelectedPage ::::: Page name : ", this.surveyModel.currentPageValue);
-                break;
-            }
-        }
-        await console.log("4. showSelectedPage :::::: ");
-    }
+    // async showSelectedPage(curSt: any) {
+    //     await console.log("1. showSelectedPage :::: ");
+    //     for (var i = 0; i < this.surveyModel.visiblePages.length; i++) {
+    //         let pm = this.surveyModel.visiblePages[i];
+    //         console.log("2. showSelectedPage. Current Page :: ", pm);
+    //         if (pm.name === curSt) {
+    //             this.surveyModel.currentPageNo = pm.visibleIndex;
+    //             console.log("3. showSelectedPage ::::: Page name : ", this.surveyModel.currentPageValue);
+    //             break;
+    //         }
+    //     }
+    //     await console.log("4. showSelectedPage :::::: ");
+    // }
 
     async getBatchList() {
         const { departmentId } = this.state;
@@ -609,7 +681,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
     }
 
     async setDropDown(list: any, questionObject: any, id: any, name: any) {
-        var obj = this.surveyModel.getQuestionByName(questionObject);
+        var obj = this.admissionModel.getQuestionByName(questionObject);
         obj.value = "";
         let arr: any = [];
         await list.map((item: any, index: any) => {
@@ -623,74 +695,90 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
     }
 
     async initData(enquiryObj: any) {
-        var studentNameQuestion = this.surveyModel.getQuestionByName("studentName");
+        var studentNameQuestion = this.admissionModel.getQuestionByName("studentName");
         studentNameQuestion.questionValue = enquiryObj.studentName;
-
-        var studentMiddleNameQuestion = this.surveyModel.getQuestionByName("studentMiddleName");
+        
+        var studentMiddleNameQuestion = this.admissionModel.getQuestionByName("studentMiddleName");
         studentMiddleNameQuestion.questionValue = enquiryObj.studentMiddleName;
 
-        var studentLastNameQuestion = this.surveyModel.getQuestionByName("studentLastName");
+        var studentLastNameQuestion = this.admissionModel.getQuestionByName("studentLastName");
         studentLastNameQuestion.questionValue = enquiryObj.studentLastName;
 
-        var studentPrimaryCellNumberQuestion = this.surveyModel.getQuestionByName("studentPrimaryCellNumber");
+        var studentPrimaryCellNumberQuestion = this.admissionModel.getQuestionByName("studentPrimaryCellNumber");
         studentPrimaryCellNumberQuestion.questionValue = enquiryObj.cellPhoneNo;
 
-        var studentLandLinePhoneNumberQuestion = this.surveyModel.getQuestionByName("studentLandLinePhoneNumber");
+        var studentLandLinePhoneNumberQuestion = this.admissionModel.getQuestionByName("studentLandLinePhoneNumber");
         studentLandLinePhoneNumberQuestion.questionValue = enquiryObj.landLinePhoneNo;
 
-        var studentPrimaryEmailIdQuestion = this.surveyModel.getQuestionByName("studentPrimaryEmailId");
+        var studentPrimaryEmailIdQuestion = this.admissionModel.getQuestionByName("studentPrimaryEmailId");
         studentPrimaryEmailIdQuestion.questionValue = enquiryObj.emailId;
 
-        var dateOfBirthQuestion = this.surveyModel.getQuestionByName("dateOfBirth");
+        var dateOfBirthQuestion = this.admissionModel.getQuestionByName("dateOfBirth");
         dateOfBirthQuestion.questionValue = moment(enquiryObj.strDateOfBirth, "DD-MM-YYYY").format("YYYY-MM-DD");
 
-        var genderQuestion = this.surveyModel.getQuestionByName("sex");
+        var genderQuestion = this.admissionModel.getQuestionByName("sex");
         genderQuestion.value = enquiryObj.gender;
 
         // ----------------
         if(!this.state.tempObj){
             return;
         }
-        this.surveyModel.getQuestionByName('fatherName').questionValue = this.state.tempObj.fatherName; 						
-        this.surveyModel.getQuestionByName('fatherMiddleName').questionValue = this.state.tempObj.fatherMiddleName; 					
-        this.surveyModel.getQuestionByName('fatherLastName').questionValue = this.state.tempObj.fatherLastName; 					
-        this.surveyModel.getQuestionByName('motherName').questionValue = this.state.tempObj.motherName; 						
-        this.surveyModel.getQuestionByName('motherMiddleName').questionValue = this.state.tempObj.motherMiddleName; 					
-        this.surveyModel.getQuestionByName('motherLastName').questionValue = this.state.tempObj.motherLastName; 					
-        this.surveyModel.getQuestionByName('placeOfBirth').questionValue = this.state.tempObj.placeOfBirth; 						
-        this.surveyModel.getQuestionByName('religion').questionValue = this.state.tempObj.religion; 							
-        this.surveyModel.getQuestionByName('caste').questionValue = this.state.tempObj.caste; 								
-        this.surveyModel.getQuestionByName('subCaste').questionValue = this.state.tempObj.subCaste; 							
-        this.surveyModel.getQuestionByName('studentLocalAddress').questionValue = this.state.tempObj.studentLocalAddress; 				
-        this.surveyModel.getQuestionByName('studentPermanentAddress').questionValue = this.state.tempObj.studentPermanentAddress; 			
-        this.surveyModel.getQuestionByName('city').questionValue = this.state.tempObj.city; 								
-        this.surveyModel.getQuestionByName('state').questionValue = this.state.tempObj.state; 								
-        this.surveyModel.getQuestionByName('pinCode').questionValue = this.state.tempObj.pinCode; 							
-        this.surveyModel.getQuestionByName('studentAlternateCellNumber').questionValue = this.state.tempObj.studentAlternateCellNumber; 		
-        this.surveyModel.getQuestionByName('studentAlternateEmailId').questionValue = this.state.tempObj.studentAlternateEmailId; 			
-        this.surveyModel.getQuestionByName('relationWithStudent').questionValue = this.state.tempObj.relationWithStudent; 				
-        this.surveyModel.getQuestionByName('emergencyContactName').questionValue = this.state.tempObj.emergencyContactName; 				
-        this.surveyModel.getQuestionByName('emergencyContactCellNumber').questionValue = this.state.tempObj.emergencyContactCellNumber; 		
-        this.surveyModel.getQuestionByName('emergencyContactEmailId').questionValue = this.state.tempObj.emergencyContactEmailId; 			
-        this.surveyModel.getQuestionByName('studentType').questionValue = this.state.tempObj.studentType; 						
-        this.surveyModel.getQuestionByName('fatherCellNumber').questionValue = this.state.tempObj.fatherCellNumber; 					
-        this.surveyModel.getQuestionByName('fatherEmailId').questionValue = this.state.tempObj.fatherEmailId; 						
-        this.surveyModel.getQuestionByName('motherCellNumber').questionValue = this.state.tempObj.motherCellNumber; 					
-        this.surveyModel.getQuestionByName('motherEmailId').questionValue = this.state.tempObj.motherEmailId; 						
-        this.surveyModel.getQuestionByName('batchId').questionValue = this.state.tempObj.batchId; 							
-        this.surveyModel.getQuestionByName('sectionId').questionValue = this.state.tempObj.sectionId; 							
+        this.admissionModel.getQuestionByName('fatherName').questionValue
+         = this.state.tempObj.fatherName; 						
+        this.admissionModel.getQuestionByName('fatherMiddleName').questionValue = this.state.tempObj.fatherMiddleName; 					
+        this.admissionModel.getQuestionByName('fatherLastName').questionValue = this.state.tempObj.fatherLastName; 					
+        this.admissionModel.getQuestionByName('motherName').questionValue = this.state.tempObj.motherName; 						
+        this.admissionModel.getQuestionByName('motherMiddleName').questionValue = this.state.tempObj.motherMiddleName; 					
+        this.admissionModel.getQuestionByName('motherLastName').questionValue = this.state.tempObj.motherLastName; 					
+        this.admissionModel.getQuestionByName('placeOfBirth').questionValue = this.state.tempObj.placeOfBirth; 						
+        this.admissionModel.getQuestionByName('religion').questionValue = this.state.tempObj.religion; 							
+        this.admissionModel.getQuestionByName('caste').questionValue = this.state.tempObj.caste; 								
+        this.admissionModel.getQuestionByName('subCaste').questionValue = this.state.tempObj.subCaste; 							
+        this.admissionModel.getQuestionByName('studentLocalAddress').questionValue = this.state.tempObj.studentLocalAddress; 				
+        this.admissionModel.getQuestionByName('studentPermanentAddress').questionValue = this.state.tempObj.studentPermanentAddress; 			
+        this.admissionModel.getQuestionByName('city').questionValue = this.state.tempObj.city; 								
+        this.admissionModel.getQuestionByName('state').questionValue = this.state.tempObj.state; 								
+        this.admissionModel.getQuestionByName('pinCode').questionValue = this.state.tempObj.pinCode; 							
+        this.admissionModel.getQuestionByName('studentAlternateCellNumber').questionValue = this.state.tempObj.studentAlternateCellNumber; 		
+        this.admissionModel.getQuestionByName('studentAlternateEmailId').questionValue = this.state.tempObj.studentAlternateEmailId; 			
+        this.admissionModel.getQuestionByName('relationWithStudent').questionValue = this.state.tempObj.relationWithStudent; 				
+        this.admissionModel.getQuestionByName('emergencyContactName').questionValue = this.state.tempObj.emergencyContactName; 				
+        this.admissionModel.getQuestionByName('emergencyContactCellNumber').questionValue = this.state.tempObj.emergencyContactCellNumber; 		
+        this.admissionModel.getQuestionByName('emergencyContactEmailId').questionValue = this.state.tempObj.emergencyContactEmailId; 			
+        this.admissionModel.getQuestionByName('studentType').questionValue = this.state.tempObj.studentType; 						
+        this.admissionModel.getQuestionByName('fatherCellNumber').questionValue = this.state.tempObj.fatherCellNumber; 					
+        this.admissionModel.getQuestionByName('fatherEmailId').questionValue = this.state.tempObj.fatherEmailId; 						
+        this.admissionModel.getQuestionByName('motherCellNumber').questionValue = this.state.tempObj.motherCellNumber; 					
+        this.admissionModel.getQuestionByName('motherEmailId').questionValue = this.state.tempObj.motherEmailId; 						
+        this.admissionModel.getQuestionByName('batchId').questionValue = this.state.tempObj.batchId; 							
+        this.admissionModel.getQuestionByName('sectionId').questionValue = this.state.tempObj.sectionId; 							
         // this.surveyModel.getQuestionByName('dateOfBirth').questionValue = this.state.tempObj.strDateOfBirth;						
-        this.surveyModel.getQuestionByName('qualification').questionValue = this.state.tempObj.highestQualification; 				
-        this.surveyModel.getQuestionByName('yearOfPassing').questionValue = this.state.tempObj.yearOfPassing; 						
-        this.surveyModel.getQuestionByName('percentage').questionValue = this.state.tempObj.lastQualificationPercentage; 		
-        this.surveyModel.getQuestionByName('institution').questionValue = this.state.tempObj.lastCollegeAttended; 				
+        this.admissionModel.getQuestionByName('qualification').questionValue = this.state.tempObj.highestQualification; 				
+        this.admissionModel.getQuestionByName('yearOfPassing').questionValue = this.state.tempObj.yearOfPassing; 						
+        this.admissionModel.getQuestionByName('percentage').questionValue = this.state.tempObj.lastQualificationPercentage; 		
+        this.admissionModel.getQuestionByName('institution').questionValue = this.state.tempObj.lastCollegeAttended; 				
         
         
     }
 
+   
     async showDetail(e: any, bShow: boolean, enquiryObj: any) {
+     const {source,enquiryList} = this.state;
+     console.log("Enquery Obj :   ",enquiryObj);
+        //   console.log("I am in ");
+        // console.log("Tr Obje ::  ",enquiryObj);
+     
+        // let i;
+        // for(i in enquiryList){
+        //   if(enquiryObj.id==enquiryList[i].id){
+        //     this.setState({
+        //         enquiryObj:enquiryList[i],
+        //     })
+        //   }
+        // }
+  
         e && e.preventDefault();
-        const {source} = this.state;
+       
         this.setState({
             isDetailOpen: bShow
         });
@@ -707,11 +795,12 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                     await Utils.sendSsmEvent("PersonalInfo", enquiryObj.id);
                 }
                 await this.updateSliderStates(this.state.currentState);
-                await this.showSelectedPage(this.state.currentState);
-                await this.setDropDown(this.state.batchList, "batchId", "id", "batch");
-                await this.setDropDown(this.state.stateList, "state", "id", "stateName");
-                await this.initFromDb(enquiryObj);
-                await this.initData(enquiryObj);
+                // await this.showSelectedPage(this.state.currentState);
+                // await this.setDropDown(this.state.batchList, "batchId", "id", "batch");
+                // await this.setDropDown(this.state.stateList, "state", "id", "stateName");
+                // await this.initFromDb(enquiryObj);
+                // await this.initData(enquiryObj);
+              
             }
             this.setState({
                 isLoading: false
@@ -721,6 +810,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                 isLoading: false
             });
         }
+       
         this.setState({
             enqObjForEdit: enquiryObj, 
             enquiryObj: enquiryObj,
@@ -729,37 +819,37 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
         });
     }
 
-    createRows(objAry: any) {
-        const { source } = this.state;
-        console.log("createRows() - Enquiry list on Grid page: ", objAry);
-        if (objAry === undefined || objAry === null) {
-            return;
-        }
-        const mutateResLength = objAry.length;
-        const retVal = [];
-        for (let i = 0; i < mutateResLength; i++) {
-            const admissionEnquiry = objAry[i];
-            retVal.push(
-                <tr >
-                    <td>{admissionEnquiry.id}</td>
-                    <td>{admissionEnquiry.studentName}&nbsp;{admissionEnquiry.studentMiddleName}&nbsp;{admissionEnquiry.studentLastName} </td>
-                    <td>{admissionEnquiry.cellPhoneNo}</td>
-                    <td>{admissionEnquiry.landLinePhoneNo}</td>
-                    <td>{admissionEnquiry.emailId}</td>
-                    <td>{admissionEnquiry.enquiryStatus}</td>
-                    <td>{admissionEnquiry.strCreatedOn}</td>
-                    <td>
-                        {
-                            admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
-                                <button className="btn btn-primary" onClick={e => this.showDetail(e, true, admissionEnquiry)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
-                            )
-                        }
-                    </td>
-                </tr>
-            );
-        }
-        return retVal;
-    }
+    // createRows(objAry: any) {
+    //     const { source } = this.state;
+    //     console.log("createRows() - Enquiry list on Grid page: ", objAry);
+    //     if (objAry === undefined || objAry === null) {
+    //         return;
+    //     }
+    //     const mutateResLength = objAry.length;
+    //     const retVal = [];
+    //     for (let i = 0; i < mutateResLength; i++) {
+    //         const admissionEnquiry = objAry[i];
+    //         retVal.push(
+    //             <tr >
+    //                 <td>{admissionEnquiry.id}</td>
+    //                 <td>{admissionEnquiry.studentName}&nbsp;{admissionEnquiry.studentMiddleName}&nbsp;{admissionEnquiry.studentLastName} </td>
+    //                 <td>{admissionEnquiry.cellPhoneNo}</td>
+    //                 <td>{admissionEnquiry.landLinePhoneNo}</td>
+    //                 <td>{admissionEnquiry.emailId}</td>
+    //                 <td>{admissionEnquiry.enquiryStatus}</td>
+    //                 <td>{admissionEnquiry.strCreatedOn}</td>
+    //                 <td>
+    //                     {
+    //                         admissionEnquiry.enquiryStatus !== "CONVERTED_TO_ADMISSION" && admissionEnquiry.enquiryStatus !== "DECLINED" && (
+    //                             <button className="btn btn-primary" onClick={e => this.showDetail(e, true, admissionEnquiry)}>{source !== "ADMISSION_PAGE" ? 'Edit' : 'Grant Admission'}</button>
+    //                         )
+    //                     }
+    //                 </td>
+    //             </tr>
+    //         );
+    //     }
+    //     return retVal;
+    // }
 
     async updateEnquiryList(updatedEnquiryList: any) {
         this.setState({
@@ -931,7 +1021,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
     }
 
     onClickSsmState(e: any, item: any){
-        this.surveyModel.pages.forEach((element: any) => {
+        this.admissionModel.pages.forEach((element: any) => {
             if(item.name === element.name){
                 // console.log("ITEM FROM GRID ::: ", element);
                 // this.setState({
@@ -952,23 +1042,24 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                         <button className="btn btn-primary" onClick={(e) => this.showDetail(e, false, null)}>Back</button>
                         {
                             source === 'ADMISSION_PAGE' ?
-                                <React.Fragment>
-                                    <div className="xform-container">
-                                        <div className="text-center  m-b-1" >
-                                            <Slider clickHandler={this.onClickSsmState} data={this.state.uniqueStateData} />
-                                        </div>
-                                        <div className="custom-style">
-                                            {/* {this.state.survey ? this.getModel(this.state.survey) : null} */}
-                                            {
-                                                this.surveyModel &&
-                                                <Survey.Survey model={this.surveyModel} onComplete={this.onComplete} onCurrentPageChanging={this.nextPageEvent} onCurrentPageChanged={this.prevPageEvent} onValueChanged={this.onFormDetailsChanged} onUploadFiles={this.uploadFiles} css={this.customCss} />
-                                            }
-                                        </div>
-                                        {/* <div className="xform-container" style={{height:'300px', overflowY:'auto'}}>
-                                        <StudentPersonalInfo className="xform-container"></StudentPersonalInfo>
-                                    </div> */}
-                                    </div>
-                                </React.Fragment>
+                                // <React.Fragment>
+                                //     <div className="xform-container">
+                                //         <div className="text-center  m-b-1" >
+                                //             <Slider clickHandler={this.onClickSsmState} data={this.state.uniqueStateData} />
+                                //         </div>
+                                //         <div className="custom-style">c
+                                           
+                                //             {
+                                //                 this.surveyModel &&
+                                //                 <Survey.Survey model={this.surveyModel} onComplete={this.onComplete} onCurrentPageChanging={this.nextPageEvent} onCurrentPageChanged={this.prevPageEvent} onValueChanged={this.onFormDetailsChanged} onUploadFiles={this.uploadFiles} css={this.customCss} />
+                                //             }
+                                //         </div>
+                                      
+                                //     </div>
+                                // </React.Fragment>
+                                <React.StrictMode>
+                                <AdmissionWorkFlow ref={this.admissionWorkflowRef} sendData={this.onComplete} onValueChanged={this.onFormDetailsChanged} onUploadFiles={this.uploadFiles} css={this.customCss}/>
+                               </React.StrictMode>
                             : 
                             this.state.enqObjForEdit !== null ?    
                                 <AdmissionEnquiryPage onSaveUpdate={this.updateEnquiryList} operationType={"EDIT"} enquiryObject={this.state.enqObjForEdit} origin={source} sourceOfApplication={sourceOfApplication}></AdmissionEnquiryPage>
@@ -1000,7 +1091,7 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                             }
                         </div>
                         <div style={{ width: '100%', height: '250px', overflow: 'auto' }}>
-                            <table id="admissionEnquiryTable" className="striped-table fwidth bg-white p-2">
+                            {/* <table id="admissionEnquiryTable" className="striped-table fwidth bg-white p-2">
                                 <thead>
                                     <tr>
                                         <th>Enquiry Id</th>
@@ -1016,9 +1107,11 @@ class EnquiryGrid<T = { [data: string]: any }> extends React.Component<Admission
                                 <tbody>
                                     {this.createRows(list)}
                                 </tbody>
-                            </table>
-                        </div>
+                            </table> */}
+                             <Table valueFromData={{ columns: this.state.columns, data: list }} perPageLimit={6} visiblecheckboxStatus={true} tableClasses={{ table: "alert-data-tabel", tableParent: "alerts-data-tabel", parentClass: "main-parent-table" }}  showingLine="Showing %start% to %end% of %total%" />
+         </div>
                     </React.Fragment>
+                    
                 }
             </main>
         );
